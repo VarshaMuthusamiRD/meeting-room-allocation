@@ -7,11 +7,11 @@ failure so a script can act on the result (F37). Run with no arguments, or
 from __future__ import annotations
 
 import argparse
-import datetime as _dt
 import sys
 from pathlib import Path
 
 from . import FORMAT_VERSION, SOFTWARE_VERSION
+from . import reports
 from .clock import Clock
 from .config import Config
 from .errors import DataFileError, NotFoundError, RuleViolation
@@ -82,6 +82,36 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("version", help="report the software and data format version (F36)")
 
     sp = sub.add_parser("check", help="run a startup self-check on the data file (F34)")
+
+    sp = sub.add_parser("report-utilisation", help="room utilisation percentage for a date (F17)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-minutes", help="total minutes booked and bookings per room, for a date (F18)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-seat-utilisation", help="seat utilisation for a date (F19)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-peak", help="peak period for a date (F20)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-under-occupied", help="bookings using fewer than half their room seats (F21)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-range", help="room utilisation averaged across a date range (F22)")
+    sp.add_argument("start_date")
+    sp.add_argument("end_date")
+
+    sp = sub.add_parser("report-booker", help="per-booker bookings and minutes for a date (F23)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("report-empty", help="empty minutes per room for a date (F24)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("list-backups", help="list available data file backups")
+
+    sp = sub.add_parser("restore-backup", help="restore the data file from a chosen backup (F40)")
+    sp.add_argument("backup_path")
 
     return p
 
@@ -157,12 +187,44 @@ def main(argv=None) -> int:
         elif args.command == "free-periods":
             for start, end in svc.free_periods(args.room, args.date):
                 print(start + "-" + end)
+        elif args.command == "report-utilisation":
+            for row in reports.room_utilisation(svc.store, args.date, svc.config):
+                print(row["room"] + "\t" + str(row["utilisation_pct"]) + "%\t" + str(row["booked_minutes"]) + "min")
+        elif args.command == "report-minutes":
+            for row in reports.room_minutes_and_count(svc.store, args.date):
+                print(row["room"] + "\t" + str(row["booking_count"]) + " bookings\t" + str(row["booked_minutes"]) + "min")
+        elif args.command == "report-seat-utilisation":
+            row = reports.seat_utilisation(svc.store, args.date, svc.config)
+            print(str(row["seat_utilisation_pct"]) + "%")
+        elif args.command == "report-peak":
+            row = reports.peak_period(svc.store, args.date, svc.config)
+            print(row["start"] + "-" + row["end"] + "\t" + str(row["rooms_in_use"]) + " rooms")
+        elif args.command == "report-under-occupied":
+            for row in reports.under_occupied_bookings(svc.store, args.date):
+                print(str(row["id"]) + "\t" + row["room"] + "\t" + str(row["attendees"]) + "/" + str(row["capacity"]))
+        elif args.command == "report-range":
+            for row in reports.room_utilisation_range(svc.store, args.start_date, args.end_date, svc.config):
+                print(row["room"] + "\t" + str(row["average_utilisation_pct"]) + "% avg over " + str(row["days"]) + " days")
+        elif args.command == "report-booker":
+            for row in reports.per_booker_report(svc.store, args.date):
+                print(row["booker"] + "\t" + str(row["booking_count"]) + " bookings\t" + str(row["total_minutes"]) + "min")
+        elif args.command == "report-empty":
+            for row in reports.empty_minutes(svc.store, args.date, svc.config):
+                print(row["room"] + "\t" + str(row["empty_minutes"]) + "min empty")
+        elif args.command == "list-backups":
+            for b in storage_mod.list_backups(svc.data_path):
+                print(str(b))
+        elif args.command == "restore-backup":
+            storage_mod.restore_from_backup(svc.data_path, Path(args.backup_path))
+            print("Restored from " + args.backup_path)
         else:
             parser.print_usage()
             return 1
     except RuleViolation as e:
         return _fail(e.rule_id, e.message)
     except NotFoundError as e:
+        return _fail(None, str(e))
+    except DataFileError as e:
         return _fail(None, str(e))
     return 0
 

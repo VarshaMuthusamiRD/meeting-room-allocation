@@ -61,10 +61,99 @@ figures as F17/F18 and are covered once, in `reports.py`, rather than twice.
 | F27 | test_bookings.py::test_F27_nonexistent_date_refused |
 | F28 | test_bookings.py::test_F28_unknown_room_refused |
 
+## Reporting and analysis (F17-F24)
+
+| Req | Description | Tests |
+|---|---|---|
+| F17 | Room utilisation per date, 1 decimal place | tests/test_reports.py::test_F17_room_utilisation_matches_appendix_b |
+| F18 | Total minutes and bookings per room, per date | tests/test_reports.py::test_F18_minutes_and_count_per_room |
+| F19 | Seat utilisation for a date | tests/test_reports.py::test_F19_seat_utilisation_matches_appendix_b |
+| F20 | Peak period for a date | tests/test_reports.py::test_F20_peak_period_matches_appendix_b |
+| F21 | Bookings using fewer than half their room seats | tests/test_reports.py::test_F21_under_occupancy_empty_for_sample_data, test_F21_under_occupancy_detects_added_boardroom_booking |
+| F22 | Room utilisation averaged across a date range | tests/test_reports.py::test_F22_range_average_utilisation |
+| F23 | Per-booker bookings and minutes for a date | tests/test_reports.py::test_F23_per_booker_report |
+| F24 | Empty minutes per room for a date | tests/test_reports.py::test_F24_empty_minutes_matches_appendix_b |
+
+Every F17-F24 figure is asserted against the exact numeric values worked
+out in Appendix B (booked minutes, percentages, peak hour, seat-minutes),
+not just checked for "a number came back."
+
+## Data integrity and resilience (F29-F33)
+
+| Req | Description | Tests |
+|---|---|---|
+| F29 | Interrupted save cannot leave the file unreadable | tests/test_integrity.py::test_F29_failed_save_does_not_corrupt_existing_file, test_F29_no_stray_temp_files_after_successful_save |
+| F30 | Corrupted/hand-edited file reported clearly on load | tests/test_integrity.py::test_F30_invalid_json_reported_clearly, test_F30_missing_required_keys_reported_clearly, test_F30_hand_edited_bad_field_type_reported_clearly |
+| F31 | Dated backup before each save, 3 most recent retained | tests/test_integrity.py::test_F31_retains_three_most_recent_backups |
+| F32 | Every accepted/refused attempt logged, append-only | tests/test_integrity.py::test_F32_accepted_booking_logged, test_F32_refused_booking_logged_with_rule_id, test_TC12_audit_log_is_append_only_across_runs |
+| F33 | Booking ids unique, never reused after cancellation | tests/test_storage.py::test_F33_ids_are_never_reused_after_cancellation |
+| F40 | Restore the data file from a chosen backup | tests/test_integrity.py::test_F40_restore_from_backup |
+
+## Technical constraints (TC7-TC12)
+
+| Constraint | Tests |
+|---|---|
+| TC7 | tests/test_config_clock.py::test_TC7_F39_fixed_now_makes_BR6_reproducible |
+| TC9 | tests/test_config_clock.py::test_TC9_F35_opening_hours_come_from_config_not_code |
+| TC10 | tests/test_performance.py (all 6 tests: list, report, range report, create, free periods, reload -- all under the 2-second budget on a 10,000-booking file) |
+| TC12 | tests/test_integrity.py::test_TC12_audit_log_is_append_only_across_runs |
+
+TC8 (format version carried in the data file) is exercised implicitly by
+every `storage.save`/`storage.load` round trip (`format_version` is a
+required key, validated in `_validate_structure`) and directly by
+`version`/`check` CLI commands, covered manually in the Day-20 live
+demonstration rather than by a dedicated unit test.
+
+## Acceptance criteria (AC1-AC42)
+
+| AC | Status | Where |
+|---|---|---|
+| AC1 | Pass | test_F1_valid_booking_is_accepted |
+| AC2 | Pass | test_BR1_overlap_refused |
+| AC3 | Pass | test_BR1_touching_bookings_accepted |
+| AC4 | Pass | test_BR2_exactly_15_minutes_accepted, test_BR2_exactly_4_hours_accepted |
+| AC5 | Pass | test_BR2_below_minimum_refused, test_BR2_above_maximum_refused |
+| AC6 | Pass | test_BR3_not_on_quarter_hour_refused |
+| AC7 | Pass | test_BR4_ends_exactly_at_closing_accepted, test_BR4_ends_after_closing_refused |
+| AC8 | Pass | test_BR5_over_capacity_refused |
+| AC9 | Pass | test_BR7_fourth_booking_same_day_refused |
+| AC10 | Pass | test_BR8_cancel_within_cutoff_refused |
+| AC11 | Pass | test_AC11_cancelled_slot_becomes_available |
+| AC12 | Pass | test_F6_bookings_survive_reload |
+| AC13 | Pass | test_F17_room_utilisation_matches_appendix_b (Boardroom 100.0, Focus 2 0.0) |
+| AC14 | Pass | test_F17_room_utilisation_matches_appendix_b (matches Appendix B exactly) |
+| AC15 | Pass | test_F2_refusal_names_the_rule, and every BR/F test asserts an exact rule id |
+| AC16 | Pass | test_F12_amended_booking_reapplies_rules |
+| AC17 | Pass | test_BR10_amendment_does_not_conflict_with_own_previous_slot |
+| AC18 | Pass | test_BR11_amend_within_cutoff_refused |
+| AC19 | Pass | test_BR16_noop_amendment_refused |
+| AC20 | Pass | test_BR9_closed_room_refused |
+| AC21 | Pass | test_BR14_close_room_with_bookings_refused |
+| AC22 | Pass | test_BR12_duplicate_name_case_insensitive_refused |
+| AC23 | Pass | test_BR13_bad_booker_id_refused |
+| AC24 | Pass | test_BR15_capacity_zero_refused, test_BR15_capacity_51_refused |
+| AC25 | Pass | test_F26_end_equals_start_refused |
+| AC26 | Pass | test_F26_end_before_start_refused |
+| AC27 | Pass | test_F27_nonexistent_date_refused |
+| AC28 | Pass | test_F28_unknown_room_refused |
+| AC29 | Pass | test_F16_free_periods_exclude_bookings |
+| AC30 | Pass | test_F19_seat_utilisation_matches_appendix_b |
+| AC31 | Pass | test_F20_peak_period_matches_appendix_b |
+| AC32 | Pass | test_F21_under_occupancy_detects_added_boardroom_booking |
+| AC33 | Pass | test_F24_empty_minutes_matches_appendix_b |
+| AC34 | Pass | test_F33_ids_are_never_reused_after_cancellation |
+| AC35 | Pass | test_F32_refused_booking_logged_with_rule_id |
+| AC36 | Pass | test_TC12_audit_log_is_append_only_across_runs |
+| AC37 | Pass | test_F30_invalid_json_reported_clearly, test_F30_missing_required_keys_reported_clearly |
+| AC38 | Pass | test_F31_retains_three_most_recent_backups, test_F40_restore_from_backup |
+| AC39 | Pass | test_TC9_F35_opening_hours_come_from_config_not_code |
+| AC40 | Pass | test_TC7_F39_fixed_now_makes_BR6_reproducible |
+| AC41 | Pass | tests/test_performance.py (all TC10 tests) |
+| AC42 | Pending Day-20 operability pass | CLI `-h` usage message; verified manually once F34-F40 land |
+
 ## Status
 
-F1-F5, F9-F16, BR1-BR7, BR9-BR16, F25-F28: **done, tested, green.**
-F6, F8/F17/F18/F22-F24, BR8: **F6/F8 pending the persistence + reporting
-suite; BR8 is tested above** (test_BR8_cancel_within_cutoff_refused).
-Everything from F17 onward is scheduled for the next phase and will be
-added to this table then, along with every AC1-AC42 status.
+F1-F33, BR1-BR16, TC7/TC9/TC10/TC12: **done, tested, green (93 tests).**
+AC1-AC41: **pass.** AC42 (usage message lists every operation) is
+mechanically true today via argparse but is formally re-checked in the
+Day-20 operability pass alongside F34-F40, which is next.

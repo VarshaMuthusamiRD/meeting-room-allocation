@@ -1,0 +1,35 @@
+# LIMITATIONS.md
+
+What is not built, what is known to be imperfect, and what a next team
+would want to look at. Started during Day-19 hardening; extended at
+handover with anything found in the final operability pass.
+
+## Known, accepted limitations
+
+- **No input length cap on audit log entries.** A booker id or room name
+  can be arbitrarily long before other rules (BR13, BR15) refuse it, and
+  every attempt -- accepted or refused -- is logged in full (TC12 requires
+  completeness, not a size cap). In a real deployment with adversarial
+  input this could grow `audit.log` faster than expected. Not fixed,
+  because the RFP does not ask for an input-length limit anywhere in
+  Section 6/7, and adding an undiscussed one risks silently truncating a
+  legitimate long value. Flagged in REVIEW.md rather than fixed unilaterally.
+
+- **Backup filenames use microsecond-precision timestamps.** Two saves
+  within the same microsecond would collide and one backup could overwrite
+  the other. Not a realistic risk for a single front-desk process handling
+  one request at a time (TC1/TC6 assume exactly that), so left as is rather
+  than adding collision-proofing the RFP never asked for.
+
+- **No true concurrency control.** The system is a single-process CLI; if
+  two people ran it against the same data file from two terminals at
+  literally the same moment, the last writer wins (see G5 in
+  ASSUMPTIONS.md). This matches the RFP's stated environment (one desk,
+  one machine, TC1) and was not built for multi-writer use because
+  multi-writer use was never in scope.
+
+## Not built (out of scope by Section 5, or should/could-have not reached)
+See Section 5 of the RFP for the full out-of-scope list (logins, email,
+recurring bookings, billing, desks, GUI, multi-site). Status of the
+should-have/could-have requirements (F41-F48) is recorded at handover, once
+it is known how much time remained after the must-haves.

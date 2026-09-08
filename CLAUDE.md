@@ -22,7 +22,7 @@ answered; TRACEABILITY.md for which tests cover which requirement/rule.
   - `rules.py` - BR1-BR16 business rule engine.
   - `service.py` - orchestrates storage + rules for every F1-F16 operation,
     plus input validation (F25-F28).
-  - `reports.py` - F17-F24 reporting (added in the reporting phase).
+  - `reports.py` - F17-F24 reporting, verified against Appendix B exactly.
   - `audit.py` - append-only audit log.
   - `config.py` / `clock.py` - configuration and the injectable clock.
   - `cli.py` - argparse entry point.

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
-from dataclasses import replace
 from pathlib import Path
 
 from . import FORMAT_VERSION
