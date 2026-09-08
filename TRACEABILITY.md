@@ -163,13 +163,28 @@ demonstration rather than by a dedicated unit test.
 | F39 | Current date/time accepted as an input (--now) | tests/test_config_clock.py::test_TC7_F39_fixed_now_makes_BR6_reproducible; tests/test_operability.py::test_F39_now_override_changes_reported_refusal |
 | F40 | Restore the data file from a chosen backup | tests/test_integrity.py::test_F40_restore_from_backup; tests/test_operability.py::test_F40_restore_backup_via_cli |
 
+## Should-have requirements (F41-F44)
+
+| Req | Description | Tests |
+|---|---|---|
+| F41 | Suggest the smallest free room that fits the attendees | tests/test_should_haves.py::TestSuggestRoom (7 tests: smallest fit, skips too-small, skips occupied, skips closed, returns None when nothing fits, F26/BR5 boundary refusals) |
+| F42 | Warn, but still allow, a booking under half the room's seats | tests/test_should_haves.py::TestUnderOccupancyWarning (4 tests: warns below half, no warning at exactly half, no warning above half, booking still accepted) |
+| F43 | Text timeline of a day, one line per room | tests/test_should_haves.py::TestDayTimeline (3 tests: one row per room, occupied cells marked, closed rooms flagged) |
+| F44 | Move a booking to another room, keeping its id | tests/test_should_haves.py::TestMoveBooking (5 tests: id kept, old slot freed, same-room move refused as BR16 no-op, over-capacity move refused as BR5, occupied-room move refused as BR1) |
+
+F44 is implemented as a thin wrapper around the existing `amend_booking`,
+so it inherits every rule check (BR1/BR5/BR10/BR11/BR16) rather than
+duplicating logic -- the boundary tests above confirm that reuse actually
+works end to end, not just that a new code path exists.
+
 ## Status
 
 **All 40 must-have requirements (F1-F40), all 16 business rules
-(BR1-BR16), all technical constraints TC7/TC9/TC10/TC12, and all 42
-acceptance criteria (AC1-AC42) are done, tested, and passing (101 tests,
-all green).** F41-F48 (should-have/could-have) were deliberately not
-attempted -- see LIMITATIONS.md for the reasoning. The live demonstration
-against the Appendix A sample data (rule-named refusals for BR1 and BR7,
-and every F17-F24 report figure) is recorded in BOARDROOM_FINDING.md and
-HANDOVER.md.
+(BR1-BR16), all technical constraints TC7/TC9/TC10/TC12, all 42 acceptance
+criteria (AC1-AC42), and all four should-have requirements (F41-F44) are
+done, tested, and passing (120 tests, all green).** F45-F48 (could-have)
+were deliberately not attempted -- see LIMITATIONS.md for the reasoning.
+The live demonstration against the Appendix A sample data (rule-named
+refusals for BR1 and BR7, every F17-F24 report figure, and a live
+suggest-room/book/timeline/move walkthrough) is recorded in
+BOARDROOM_FINDING.md and HANDOVER.md.

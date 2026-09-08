@@ -19,10 +19,14 @@ answered; TRACEABILITY.md for which tests cover which requirement/rule.
   - `models.py` - Room, Booking, Closure dataclasses.
   - `storage.py` - JSON persistence, atomic writes, backup rotation,
     corruption detection.
-  - `rules.py` - BR1-BR16 business rule engine.
+  - `rules.py` - BR1-BR16 business rule engine, plus `free_rooms()` (F41
+    support: rooms open and unbooked for a given window).
   - `service.py` - orchestrates storage + rules for every F1-F16 operation,
-    plus input validation (F25-F28).
-  - `reports.py` - F17-F24 reporting, verified against Appendix B exactly.
+    plus input validation (F25-F28), and the should-have additions
+    `suggest_room` (F41), `is_under_occupied` (F42), `move_booking` (F44 -
+    a thin wrapper around `amend_booking`, reusing every rule check).
+  - `reports.py` - F17-F24 reporting, verified against Appendix B exactly,
+    plus `day_timeline()` (F43).
   - `audit.py` - append-only audit log.
   - `config.py` / `clock.py` - configuration and the injectable clock.
   - `cli.py` - argparse entry point.

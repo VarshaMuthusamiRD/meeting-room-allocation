@@ -143,3 +143,20 @@ def check_add_room(name: str, capacity: int, store: Store, config: Config) -> No
 def check_close_room(room: str, date: str, store: Store) -> None:
     if _active_bookings_for_room_date(store, room, date):
         raise RuleViolation("BR14", "Room has existing bookings on this date; cancel them first.")
+
+
+def free_rooms(store: Store, date: str, start: str, end: str) -> list[Room]:
+    """F41 support: rooms that are open (not closed) and have no overlapping
+    active booking for the given date/start/end window."""
+    candidates = []
+    for room in store.rooms:
+        if _room_closed(store, room.name, date):
+            continue
+        conflict = False
+        for existing in _active_bookings_for_room_date(store, room.name, date):
+            if _overlaps(start, end, existing.start, existing.end):
+                conflict = True
+                break
+        if not conflict:
+            candidates.append(room)
+    return candidates

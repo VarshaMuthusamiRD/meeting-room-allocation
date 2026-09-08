@@ -18,6 +18,7 @@ from .rules import (
     check_cancellation,
     check_close_room,
     check_new_booking,
+    free_rooms,
 )
 from .storage import Store, load, save
 
@@ -263,3 +264,30 @@ class BookingService:
         if end_of_day > cursor and (end_of_day - cursor) >= self.config.min_free_period_minutes:
             free.append((to_hhmm(cursor), to_hhmm(end_of_day)))
         return free
+
+    # -- F41: suggest the smallest free room that fits the attendees -----
+    def suggest_room(self, date: object, start: object, end: object, attendees: object) -> Room | None:
+        date_val = _validate_date(date)
+        start_val = _validate_time(start, "start")
+        end_val = _validate_time(end, "end")
+        attendees_val = _require_int(attendees, "attendees")
+        if end_val <= start_val:
+            raise RuleViolation("F26", "End time must be later than start time.")
+        if attendees_val < 1:
+            raise RuleViolation("BR5", "Attendees must be at least 1.")
+        candidates = free_rooms(self.store, date_val, start_val, end_val)
+        fitting = [r for r in candidates if r.capacity >= attendees_val]
+        if not fitting:
+            return None
+        return min(fitting, key=lambda r: (r.capacity, r.name.lower()))
+
+    # -- F42: under-occupancy warning (advisory only, never blocks) ------
+    def is_under_occupied(self, room_name: str, attendees: int) -> bool:
+        room = self._find_room_ci(room_name)
+        if room is None or room.capacity <= 0:
+            return False
+        return attendees < room.capacity / 2.0
+
+    # -- F44: move a booking to another room, keeping its identifier -----
+    def move_booking(self, booking_id: int, new_room: object) -> Booking:
+        return self.amend_booking(booking_id, room=new_room)

@@ -186,3 +186,30 @@ def empty_minutes(store: Store, date: str, config: Config) -> list[dict]:
             "total_minutes": available,
         })
     return results
+
+
+def day_timeline(store: Store, date: str, config: Config, resolution_minutes: int = 30) -> list[dict]:
+    """F43: a text timeline of a day, one row per room. '#' marks a cell
+    that overlaps a booking, '.' marks a free cell; closed rooms are flagged."""
+    open_min = _to_minutes(config.opening_time)
+    close_min = _to_minutes(config.closing_time)
+    bookings = _active_for_date(store, date)
+    results = []
+    for room in sorted(store.rooms, key=lambda r: r.name.lower()):
+        room_bookings = [b for b in bookings if b.room.strip().lower() == room.name.strip().lower()]
+        closed = any(
+            c.room.strip().lower() == room.name.strip().lower() and c.date == date
+            for c in store.closures
+        )
+        cells = []
+        cursor = open_min
+        while cursor < close_min:
+            cell_end = cursor + resolution_minutes
+            occupied = any(
+                _to_minutes(b.start) < cell_end and cursor < _to_minutes(b.end)
+                for b in room_bookings
+            )
+            cells.append("#" if occupied else ".")
+            cursor = cell_end
+        results.append({"room": room.name, "line": "".join(cells), "closed": closed})
+    return results

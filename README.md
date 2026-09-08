@@ -23,8 +23,10 @@ answer the whole tender was commissioned to produce.
 
 ## Status
 All 40 must-have requirements (F1-F40), all 16 business rules, and all 42
-acceptance criteria from the RFP are implemented and tested: 101 tests,
-all green. Tagged `v1.0`. Should-have/could-have requirements (F41-F48)
-were not attempted -- see LIMITATIONS.md.
+acceptance criteria from the RFP are implemented and tested, plus all four
+should-have requirements (F41-F44: smallest-room suggestion,
+under-occupancy warning, day timeline, single-op room move): 120 tests,
+all green. Tagged `v1.0`. Could-have requirements (F45-F48) were not
+attempted -- see LIMITATIONS.md.
 
     python -m unittest discover -s tests -v

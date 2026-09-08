@@ -113,6 +113,19 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("restore-backup", help="restore the data file from a chosen backup (F40)")
     sp.add_argument("backup_path")
 
+    sp = sub.add_parser("suggest-room", help="suggest the smallest free room for the attendees (F41)")
+    sp.add_argument("date")
+    sp.add_argument("start")
+    sp.add_argument("end")
+    sp.add_argument("attendees", type=int)
+
+    sp = sub.add_parser("timeline", help="text timeline of a day, one line per room (F43)")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("move", help="move a booking to another room, keeping its id (F44)")
+    sp.add_argument("id", type=int)
+    sp.add_argument("new_room")
+
     return p
 
 
@@ -157,6 +170,8 @@ def main(argv=None) -> int:
         if args.command == "book":
             b = svc.create_booking(args.room, args.date, args.start, args.end, args.attendees, args.booked_by)
             print("Booked #" + str(b.id) + ": " + b.room + " " + b.date + " " + b.start + "-" + b.end)
+            if svc.is_under_occupied(b.room, b.attendees):
+                print("NOTE: this booking uses fewer than half the seats in " + b.room + ".")
         elif args.command == "cancel":
             b = svc.cancel_booking(args.id)
             print("Cancelled #" + str(b.id))
@@ -175,6 +190,8 @@ def main(argv=None) -> int:
         elif args.command == "amend":
             b = svc.amend_booking(args.id, room=args.room, date=args.date, start=args.start, end=args.end, attendees=args.attendees)
             print("Amended #" + str(b.id) + ": " + b.room + " " + b.date + " " + b.start + "-" + b.end)
+            if svc.is_under_occupied(b.room, b.attendees):
+                print("NOTE: this booking uses fewer than half the seats in " + b.room + ".")
         elif args.command == "add-room":
             r = svc.add_room(args.name, args.capacity)
             print("Added room: " + r.name + " (capacity " + str(r.capacity) + ")")
@@ -217,6 +234,21 @@ def main(argv=None) -> int:
         elif args.command == "restore-backup":
             storage_mod.restore_from_backup(svc.data_path, Path(args.backup_path))
             print("Restored from " + args.backup_path)
+        elif args.command == "suggest-room":
+            room = svc.suggest_room(args.date, args.start, args.end, args.attendees)
+            if room is None:
+                print("No room is free and large enough for " + str(args.attendees) + " attendees.")
+            else:
+                print(room.name + "\t(capacity " + str(room.capacity) + ")")
+        elif args.command == "timeline":
+            for row in reports.day_timeline(svc.store, args.date, svc.config):
+                suffix = " (closed)" if row["closed"] else ""
+                print(row["room"] + "\t" + row["line"] + suffix)
+        elif args.command == "move":
+            b = svc.move_booking(args.id, args.new_room)
+            print("Moved #" + str(b.id) + " to " + b.room)
+            if svc.is_under_occupied(b.room, b.attendees):
+                print("NOTE: this booking uses fewer than half the seats in " + b.room + ".")
         else:
             parser.print_usage()
             return 1
