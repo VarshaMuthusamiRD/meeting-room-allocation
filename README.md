@@ -47,7 +47,7 @@ at one (Section 4.6/4.7).
 | Could-have | F45-F48 | Done |
 | Acceptance criteria | AC1-AC42 | All pass |
 
-**139 unit tests, all green.** Tagged `v1.0` at the end of the must-have
+**141 unit tests, all green.** Tagged `v1.0` at the end of the must-have
 build (see [TRACEABILITY.md](TRACEABILITY.md) for the full
 requirement-to-test map).
 
@@ -120,11 +120,19 @@ and `python run.py -h` lists every command with its exact arguments
     run.py                  single entry point (TC5)
     config.json              opening hours, booking limits (F35/TC9)
     src/mrbooking/
-      models.py               Room, Booking, Closure
-      storage.py               JSON persistence, atomic writes, backups
-      rules.py                  BR1-BR16 rule engine, free_rooms (F41)
-      service.py                 orchestrates every F1-F16/F41/F42/F44 op
-      reports.py                  F17-F24 reporting, day_timeline (F43)
+      models.py               Room, Booking, Closure, WaitlistEntry (F47)
+      storage.py               JSON persistence, atomic writes, backups,
+                                 retries transient Windows file locks (F29)
+      rules.py                  BR1-BR16 rule engine, free_rooms (F41),
+                                  check_waitlist_entry (F47)
+      service.py                 orchestrates every F1-F16 op, plus
+                                   suggest_room/is_under_occupied/
+                                   move_booking (F41/F42/F44) and the
+                                   waitlist methods (F47)
+      reports.py                  F17-F24 reporting, day_timeline (F43),
+                                    weekly_utilisation_summary (F45),
+                                    trend_comparison (F48)
+      export.py                    write_day_csv (F46)
       audit.py                     append-only audit log
       config.py / clock.py          config loading, injectable clock
       cli.py                          argparse entry point
