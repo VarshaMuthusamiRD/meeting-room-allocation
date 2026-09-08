@@ -11,13 +11,14 @@ from . import FORMAT_VERSION
 from .audit import record as audit_record
 from .config import Config
 from .errors import NotFoundError, RuleViolation
-from .models import Booking, Closure, Room
+from .models import Booking, Closure, Room, WaitlistEntry
 from .rules import (
     check_add_room,
     check_amendment,
     check_cancellation,
     check_close_room,
     check_new_booking,
+    check_waitlist_entry,
     free_rooms,
 )
 from .storage import Store, load, save
@@ -291,3 +292,55 @@ class BookingService:
     # -- F44: move a booking to another room, keeping its identifier -----
     def move_booking(self, booking_id: int, new_room: object) -> Booking:
         return self.amend_booking(booking_id, room=new_room)
+
+    # -- F47: waiting list for a slot that is already taken --------------
+    def add_to_waitlist(self, room: object, date: object, start: object, end: object,
+                         attendees: object, booked_by: object) -> WaitlistEntry:
+        request = {
+            "room": room, "date": date, "start": start, "end": end,
+            "attendees": attendees, "booked_by": booked_by,
+        }
+        try:
+            room_name = _require_text(room, "room")
+            date_val = _validate_date(date)
+            start_val = _validate_time(start, "start")
+            end_val = _validate_time(end, "end")
+            attendees_val = _require_int(attendees, "attendees")
+            booked_by_val = _require_text(booked_by, "booked_by")
+            if end_val <= start_val:
+                raise RuleViolation("F26", "End time must be later than start time.")
+            if self._find_room_ci(room_name) is None:
+                raise RuleViolation("F28", "Room is not in the room list.")
+            candidate = {
+                "room": room_name, "date": date_val, "start": start_val, "end": end_val,
+                "attendees": attendees_val, "booked_by": booked_by_val,
+            }
+            check_waitlist_entry(candidate, self.store, self.config, self._now())
+        except RuleViolation as e:
+            self._audit("add_to_waitlist", request, "refused", e.rule_id)
+            raise
+        entry = WaitlistEntry(
+            id=self.store.next_id, room=room_name, date=date_val, start=start_val,
+            end=end_val, attendees=attendees_val, booked_by=booked_by_val, status="waiting",
+        )
+        self.store.waitlist.append(entry)
+        self.store.next_id += 1
+        self._save()
+        self._audit("add_to_waitlist", request, "accepted", None)
+        return entry
+
+    def remove_from_waitlist(self, entry_id: int) -> WaitlistEntry:
+        for entry in self.store.waitlist:
+            if entry.id == entry_id:
+                entry.status = "removed"
+                self._save()
+                self._audit("remove_from_waitlist", {"id": entry_id}, "accepted", None)
+                return entry
+        raise NotFoundError("No waitlist entry with id " + str(entry_id))
+
+    def list_waitlist_for_room_date(self, room: str, date: str) -> list[WaitlistEntry]:
+        items = [
+            w for w in self.store.waitlist
+            if w.status == "waiting" and w.date == date and w.room.strip().lower() == room.strip().lower()
+        ]
+        return sorted(items, key=lambda w: w.id)

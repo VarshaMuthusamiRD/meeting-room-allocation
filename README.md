@@ -29,11 +29,11 @@ front-desk staff after five minutes of explanation.
 
 ## What's implemented
 
-Every **must-have** requirement in the RFP, plus all four **should-have**
-requirements, are built and tested. **Could-have** requirements were
-deliberately not attempted (see [LIMITATIONS.md](LIMITATIONS.md)) -
-matching the RFP's own stated preference for complete must-haves over a
-broken attempt at an optional extra.
+**All forty-eight requirements in the RFP are built and tested** - every
+must-have, should-have, and could-have. Each optional group was only
+started once everything ahead of it was complete and green, per the RFP's
+own stated preference for a fully working addition over a broken attempt
+at one (Section 4.6/4.7).
 
 | Group | Requirements | Status |
 |---|---|---|
@@ -44,10 +44,10 @@ broken attempt at an optional extra.
 | Business rules | BR1-BR16 | Done, both sides of every boundary tested |
 | Technical constraints | TC1-TC12 | Satisfied |
 | Should-have | F41-F44 | Done |
-| Could-have | F45-F48 | Not attempted (by design) |
+| Could-have | F45-F48 | Done |
 | Acceptance criteria | AC1-AC42 | All pass |
 
-**120 unit tests, all green.** Tagged `v1.0` at the end of the must-have
+**139 unit tests, all green.** Tagged `v1.0` at the end of the must-have
 build (see [TRACEABILITY.md](TRACEABILITY.md) for the full
 requirement-to-test map).
 
@@ -108,6 +108,7 @@ subcommand name:
 | Room admin | `add-room`, `list-rooms`, `close-room`, `free-periods` |
 | Reporting | `report-utilisation`, `report-minutes`, `report-seat-utilisation`, `report-peak`, `report-under-occupied`, `report-range`, `report-booker`, `report-empty` |
 | Should-have | `suggest-room`, `timeline`, `move` |
+| Could-have | `report-weekly`, `export`, `waitlist-add`, `waitlist-list`, `waitlist-remove`, `report-trend` |
 | Operability | `version`, `check`, `list-backups`, `restore-backup` |
 
 Every command exits `0` on success and `1` on refusal or failure (F37),
@@ -166,8 +167,8 @@ about desks, no GUI, no multi-site support. None of it was built.
 
 ## Status
 
-**All 40 must-have requirements, all 16 business rules, all 42 acceptance
-criteria, and all four should-have requirements (F41-F44) are implemented
-and tested: 120 tests, all green.** Tagged `v1.0`. See
+**All 48 requirements in the RFP - every must-have, should-have, and
+could-have - are implemented and tested: 141 tests, all green.** Tagged
+`v1.0` at the end of the must-have build. See
 [BOARDROOM_FINDING.md](BOARDROOM_FINDING.md) for the answer to the
 question the RFP was actually commissioned to settle.

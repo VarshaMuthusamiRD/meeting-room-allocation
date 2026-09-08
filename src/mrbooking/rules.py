@@ -160,3 +160,34 @@ def free_rooms(store: Store, date: str, start: str, end: str) -> list[Room]:
         if not conflict:
             candidates.append(room)
     return candidates
+
+
+def check_waitlist_entry(candidate: dict, store: Store, config: Config, now: _dt.datetime) -> None:
+    """F47: a waitlist entry is deliberately allowed to be for a slot that is
+    already taken -- that is the whole point of a waitlist -- so BR1 (overlap)
+    is not checked here. BR7 (daily booking limit) is also not checked: a
+    waitlist entry does not hold a room, so it should not count against the
+    limit on active bookings a person can hold. Every other applicable rule
+    (duration, quarter-hour, opening hours, capacity, not in the past, room
+    not closed, booker id format) still applies, in the same fixed BR-numeric
+    order used everywhere else (G7)."""
+    room = _find_room(store, candidate["room"])
+    duration = _duration_minutes(candidate["start"], candidate["end"])
+    if duration < config.min_booking_minutes or duration > config.max_booking_minutes:
+        raise RuleViolation("BR2", "Booking length must be within the configured minimum and maximum.")
+    if _to_minutes(candidate["start"]) % config.slot_minutes != 0 or \
+       _to_minutes(candidate["end"]) % config.slot_minutes != 0:
+        raise RuleViolation("BR3", "Start and end times must fall on a quarter hour.")
+    if _to_minutes(candidate["start"]) < _to_minutes(config.opening_time) or \
+       _to_minutes(candidate["end"]) > _to_minutes(config.closing_time):
+        raise RuleViolation("BR4", "Booking must fall within opening hours.")
+    if room is not None:
+        if candidate["attendees"] < 1 or candidate["attendees"] > room.capacity:
+            raise RuleViolation("BR5", "Attendees must be between 1 and the room capacity.")
+    booking_dt = _dt.datetime.strptime(candidate["date"] + " " + candidate["start"], "%Y-%m-%d %H:%M")
+    if booking_dt < now:
+        raise RuleViolation("BR6", "Booking may not be made for a date and time in the past.")
+    if _room_closed(store, candidate["room"], candidate["date"]):
+        raise RuleViolation("BR9", "Room is closed on this date.")
+    if not BOOKER_ID_RE.match(candidate["booked_by"]):
+        raise RuleViolation("BR13", "Booker id must be 3-20 lower-case letters or digits, no spaces or punctuation.")

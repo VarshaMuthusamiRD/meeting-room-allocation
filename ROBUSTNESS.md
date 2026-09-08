@@ -46,6 +46,21 @@ byte-for-byte unchanged and still valid JSON. This is a property of the
 write-to-temp-file-then-replace design, not a special case that was added
 after finding a bug.
 
+**Update, found while building F45-F48:** a real, intermittent failure
+that earlier phases had only guessed at (logged as unreproduced flakiness
+in LIMITATIONS.md) was root-caused with a full traceback: `os.replace` can
+transiently raise `PermissionError: [WinError 32]` on Windows when another
+process briefly holds a lock on the just-written temp file (antivirus or
+search indexing are the usual cause) - and the cleanup code in the
+original `finally` block made it worse, masking that error with a second
+one from a failed `os.remove` on the same locked file. Fixed with a
+bounded retry (`storage._replace_with_retry`, 5 attempts with a short
+backoff) and a cleanup path that can no longer hide the real error. The
+full suite went from roughly 1-in-3 to 1-in-5 runs failing to 8+
+consecutive clean runs after the fix. See
+`test_F29_transient_windows_file_lock_is_retried_not_fatal` and
+`test_F29_permanent_lock_still_raises_after_retries`.
+
 ## Corrupted / hand-edited data file (F30)
 Three forms of corruption were tried against `storage.load`: invalid JSON
 syntax, a JSON object missing required top-level keys, and a JSON object

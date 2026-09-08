@@ -82,7 +82,7 @@ not just checked for "a number came back."
 
 | Req | Description | Tests |
 |---|---|---|
-| F29 | Interrupted save cannot leave the file unreadable | tests/test_integrity.py::test_F29_failed_save_does_not_corrupt_existing_file, test_F29_no_stray_temp_files_after_successful_save |
+| F29 | Interrupted save cannot leave the file unreadable | tests/test_integrity.py::test_F29_failed_save_does_not_corrupt_existing_file, test_F29_no_stray_temp_files_after_successful_save, test_F29_transient_windows_file_lock_is_retried_not_fatal, test_F29_permanent_lock_still_raises_after_retries |
 | F30 | Corrupted/hand-edited file reported clearly on load | tests/test_integrity.py::test_F30_invalid_json_reported_clearly, test_F30_missing_required_keys_reported_clearly, test_F30_hand_edited_bad_field_type_reported_clearly |
 | F31 | Dated backup before each save, 3 most recent retained | tests/test_integrity.py::test_F31_retains_three_most_recent_backups |
 | F32 | Every accepted/refused attempt logged, append-only | tests/test_integrity.py::test_F32_accepted_booking_logged, test_F32_refused_booking_logged_with_rule_id, test_TC12_audit_log_is_append_only_across_runs |
@@ -177,14 +177,32 @@ so it inherits every rule check (BR1/BR5/BR10/BR11/BR16) rather than
 duplicating logic -- the boundary tests above confirm that reuse actually
 works end to end, not just that a new code path exists.
 
+## Could-have requirements (F45-F48)
+
+| Req | Description | Tests |
+|---|---|---|
+| F45 | Weekly utilisation summary across 7 consecutive dates | tests/test_could_haves.py::TestWeeklySummary (3 tests: 7-date coverage, per-date figures match Appendix B, empty week reads zero) |
+| F46 | Export a day's bookings to a file the accountant can open | tests/test_could_haves.py::TestExportCsv (3 tests: CSV export, cancelled bookings excluded, empty day still writes a header) |
+| F47 | Waiting list for a slot that is already taken | tests/test_could_haves.py::TestWaitlist (8 tests: add/list/remove, still enforces capacity/booker-id format, does NOT enforce the daily limit or hold the room, survives reload) plus tests/test_could_haves.py::TestBackwardCompatibleLoading (a pre-F47 data file without a `waitlist` key still loads) |
+| F48 | Trend comparison between two date ranges | tests/test_could_haves.py::TestTrendComparison (3 tests: busier, quieter, unchanged) |
+
+F47 added an optional `waitlist` key to the data file schema (see
+`storage.py`) - deliberately optional and not requiring a `format_version`
+bump, so every `v1.0` data file written before this feature existed
+continues to load unchanged (verified by
+`test_pre_F47_data_file_without_waitlist_key_still_loads`). F47's rule
+checking reuses BR2-BR6/BR9/BR13 in the same fixed order as bookings, but
+deliberately skips BR1 (overlap is the point of a waitlist) and BR7 (a
+waitlist entry does not hold a room, so does not count against the daily
+limit) - see `rules.check_waitlist_entry`.
+
 ## Status
 
 **All 40 must-have requirements (F1-F40), all 16 business rules
 (BR1-BR16), all technical constraints TC7/TC9/TC10/TC12, all 42 acceptance
-criteria (AC1-AC42), and all four should-have requirements (F41-F44) are
-done, tested, and passing (120 tests, all green).** F45-F48 (could-have)
-were deliberately not attempted -- see LIMITATIONS.md for the reasoning.
-The live demonstration against the Appendix A sample data (rule-named
-refusals for BR1 and BR7, every F17-F24 report figure, and a live
-suggest-room/book/timeline/move walkthrough) is recorded in
-BOARDROOM_FINDING.md and HANDOVER.md.
+criteria (AC1-AC42), all four should-have requirements (F41-F44), and all
+four could-have requirements (F45-F48) are done, tested, and passing (141
+tests, all green).** The live demonstration against the Appendix A sample
+data (rule-named refusals for BR1 and BR7, every F17-F24 report figure,
+and a live suggest-room/book/timeline/move/export/waitlist walkthrough) is
+recorded in BOARDROOM_FINDING.md and HANDOVER.md.

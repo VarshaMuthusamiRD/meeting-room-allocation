@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from . import FORMAT_VERSION, SOFTWARE_VERSION
+from . import export as export_mod
 from . import reports
 from .clock import Clock
 from .config import Config
@@ -125,6 +126,34 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("move", help="move a booking to another room, keeping its id (F44)")
     sp.add_argument("id", type=int)
     sp.add_argument("new_room")
+
+    sp = sub.add_parser("report-weekly", help="weekly utilisation summary across 7 consecutive dates (F45)")
+    sp.add_argument("start_date")
+
+    sp = sub.add_parser("export", help="export a day's bookings to a CSV file (F46)")
+    sp.add_argument("date")
+    sp.add_argument("output_path")
+
+    sp = sub.add_parser("waitlist-add", help="add a request to the waiting list for a taken slot (F47)")
+    sp.add_argument("room")
+    sp.add_argument("date")
+    sp.add_argument("start")
+    sp.add_argument("end")
+    sp.add_argument("attendees", type=int)
+    sp.add_argument("booked_by")
+
+    sp = sub.add_parser("waitlist-list", help="list the waiting list for a room/date (F47)")
+    sp.add_argument("room")
+    sp.add_argument("date")
+
+    sp = sub.add_parser("waitlist-remove", help="remove an entry from the waiting list by id (F47)")
+    sp.add_argument("id", type=int)
+
+    sp = sub.add_parser("report-trend", help="trend comparison between two date ranges (F48)")
+    sp.add_argument("range_a_start")
+    sp.add_argument("range_a_end")
+    sp.add_argument("range_b_start")
+    sp.add_argument("range_b_end")
 
     return p
 
@@ -249,6 +278,28 @@ def main(argv=None) -> int:
             print("Moved #" + str(b.id) + " to " + b.room)
             if svc.is_under_occupied(b.room, b.attendees):
                 print("NOTE: this booking uses fewer than half the seats in " + b.room + ".")
+        elif args.command == "report-weekly":
+            summary = reports.weekly_utilisation_summary(svc.store, args.start_date, svc.config)
+            print(summary["start_date"] + " to " + summary["end_date"])
+            for row in summary["average_by_room"]:
+                print(row["room"] + "\t" + str(row["average_utilisation_pct"]) + "% avg")
+        elif args.command == "export":
+            count = export_mod.write_day_csv(svc.store, args.date, Path(args.output_path))
+            print("Exported " + str(count) + " booking(s) to " + args.output_path)
+        elif args.command == "waitlist-add":
+            w = svc.add_to_waitlist(args.room, args.date, args.start, args.end, args.attendees, args.booked_by)
+            print("Waitlisted #" + str(w.id) + ": " + w.room + " " + w.date + " " + w.start + "-" + w.end)
+        elif args.command == "waitlist-list":
+            for w in svc.list_waitlist_for_room_date(args.room, args.date):
+                print(str(w.id) + "\t" + w.start + "-" + w.end + "\t" + str(w.attendees) + "\t" + w.booked_by)
+        elif args.command == "waitlist-remove":
+            w = svc.remove_from_waitlist(args.id)
+            print("Removed waitlist entry #" + str(w.id))
+        elif args.command == "report-trend":
+            for row in reports.trend_comparison(svc.store, args.range_a_start, args.range_a_end,
+                                                 args.range_b_start, args.range_b_end, svc.config):
+                print(row["room"] + "\t" + str(row["range_a_pct"]) + "% -> " + str(row["range_b_pct"])
+                      + "%\t" + row["trend"])
         else:
             parser.print_usage()
             return 1

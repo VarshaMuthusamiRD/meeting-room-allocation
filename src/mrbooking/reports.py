@@ -213,3 +213,54 @@ def day_timeline(store: Store, date: str, config: Config, resolution_minutes: in
             cursor = cell_end
         results.append({"room": room.name, "line": "".join(cells), "closed": closed})
     return results
+
+
+def weekly_utilisation_summary(store: Store, start_date: str, config: Config) -> dict:
+    """F45: a weekly utilisation summary across seven consecutive dates,
+    starting from start_date. Reuses room_utilisation per day and
+    room_utilisation_range for the week's average, rather than a third
+    calculation path."""
+    start_dt = _dt.datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_dt = start_dt + _dt.timedelta(days=6)
+    end_date = end_dt.strftime("%Y-%m-%d")
+    dates = []
+    cursor = start_dt
+    while cursor <= end_dt:
+        dates.append(cursor.strftime("%Y-%m-%d"))
+        cursor += _dt.timedelta(days=1)
+    per_date = {d: room_utilisation(store, d, config) for d in dates}
+    average_by_room = room_utilisation_range(store, start_date, end_date, config)
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "dates": dates,
+        "per_date": per_date,
+        "average_by_room": average_by_room,
+    }
+
+
+def trend_comparison(store: Store, range_a_start: str, range_a_end: str,
+                      range_b_start: str, range_b_end: str, config: Config) -> list[dict]:
+    """F48: trend comparison between two date ranges, showing which rooms
+    grew busier. Reuses room_utilisation_range for each range's average."""
+    range_a = {r["room"]: r["average_utilisation_pct"] for r in room_utilisation_range(store, range_a_start, range_a_end, config)}
+    range_b = {r["room"]: r["average_utilisation_pct"] for r in room_utilisation_range(store, range_b_start, range_b_end, config)}
+    results = []
+    for room in sorted(store.rooms, key=lambda r: r.name.lower()):
+        a_pct = range_a.get(room.name, 0.0)
+        b_pct = range_b.get(room.name, 0.0)
+        delta = round(b_pct - a_pct, 1)
+        if delta > 0:
+            trend = "busier"
+        elif delta < 0:
+            trend = "quieter"
+        else:
+            trend = "unchanged"
+        results.append({
+            "room": room.name,
+            "range_a_pct": a_pct,
+            "range_b_pct": b_pct,
+            "delta_pct": delta,
+            "trend": trend,
+        })
+    return results

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from . import FORMAT_VERSION
 from .errors import DataFileError
-from .models import Booking, Closure, Room
+from .models import Booking, Closure, Room, WaitlistEntry
 
 REQUIRED_KEYS = {"format_version", "next_id", "rooms", "bookings", "closures"}
 BACKUP_RETAIN = 3
@@ -29,6 +29,7 @@ class Store:
     rooms: list[Room] = field(default_factory=list)
     bookings: list[Booking] = field(default_factory=list)
     closures: list[Closure] = field(default_factory=list)
+    waitlist: list[WaitlistEntry] = field(default_factory=list)
     next_id: int = 1
     format_version: int = FORMAT_VERSION
 
@@ -39,6 +40,7 @@ class Store:
             "rooms": [r.to_dict() for r in self.rooms],
             "bookings": [b.to_dict() for b in self.bookings],
             "closures": [c.to_dict() for c in self.closures],
+            "waitlist": [w.to_dict() for w in self.waitlist],
         }
 
 
@@ -72,6 +74,22 @@ def _validate_structure(data: object) -> None:
                 raise DataFileError(
                     f"Data file '{key}[{i}]' is missing fields: {sorted(missing_item)}"
                 )
+    # "waitlist" (F47) is optional: files written before F47 existed do not have
+    # it, and must still load cleanly (additive schema change, no format_version
+    # bump needed -- see ASSUMPTIONS.md). When present, it is validated the same
+    # way as the other collections.
+    if "waitlist" in data:
+        if not isinstance(data["waitlist"], list):
+            raise DataFileError("Data file 'waitlist' must be a list.")
+        waitlist_keys = {"id", "room", "date", "start", "end", "attendees", "booked_by"}
+        for i, item in enumerate(data["waitlist"]):
+            if not isinstance(item, dict):
+                raise DataFileError(f"Data file 'waitlist[{i}]' must be an object.")
+            missing_item = waitlist_keys - set(item.keys())
+            if missing_item:
+                raise DataFileError(
+                    f"Data file 'waitlist[{i}]' is missing fields: {sorted(missing_item)}"
+                )
 
 
 def load(path: Path) -> Store:
@@ -91,6 +109,7 @@ def load(path: Path) -> Store:
         rooms=[Room.from_dict(r) for r in data["rooms"]],
         bookings=[Booking.from_dict(b) for b in data["bookings"]],
         closures=[Closure.from_dict(c) for c in data["closures"]],
+        waitlist=[WaitlistEntry.from_dict(w) for w in data.get("waitlist", [])],
         next_id=data["next_id"],
         format_version=data["format_version"],
     )
@@ -113,6 +132,26 @@ def _rotate_backups(path: Path) -> None:
         oldest.unlink(missing_ok=True)
 
 
+def _replace_with_retry(tmp_name: str, path: Path, attempts: int = 5) -> None:
+    """os.replace can transiently fail on Windows with WinError 32 ("the
+    process cannot access the file") when antivirus or search indexing
+    briefly holds a read lock on a just-written file. This is not a real
+    conflict -- the file is not actually in concurrent use by this program
+    (TC1/TC6 assume a single desk process) -- so a short bounded retry
+    resolves it without weakening the atomicity guarantee (F29): the file
+    is still only ever replaced by a single, complete os.replace call."""
+    import time
+
+    for attempt in range(attempts):
+        try:
+            os.replace(tmp_name, path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+
+
 def save(path: Path, store: Store) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _rotate_backups(path)
@@ -123,10 +162,16 @@ def save(path: Path, store: Store) -> None:
             f.write("\n")
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_name, path)
+        _replace_with_retry(tmp_name, path)
     finally:
-        if os.path.exists(tmp_name):
-            os.remove(tmp_name)
+        # Best-effort cleanup only: if os.replace succeeded, tmp_name is
+        # already gone. If it raised, that original error is what the
+        # caller needs to see -- a failure here must never mask it.
+        try:
+            if os.path.exists(tmp_name):
+                os.remove(tmp_name)
+        except OSError:
+            pass
 
 
 def list_backups(path: Path) -> list[Path]:

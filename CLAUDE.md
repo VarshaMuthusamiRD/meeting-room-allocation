@@ -16,17 +16,23 @@ answered; TRACEABILITY.md for which tests cover which requirement/rule.
 
 ## Structure
 - `src/mrbooking/` - the package.
-  - `models.py` - Room, Booking, Closure dataclasses.
+  - `models.py` - Room, Booking, Closure, WaitlistEntry (F47) dataclasses.
   - `storage.py` - JSON persistence, atomic writes, backup rotation,
-    corruption detection.
+    corruption detection. `waitlist` is an optional key (F47), so a data
+    file written before F47 existed still loads unchanged.
   - `rules.py` - BR1-BR16 business rule engine, plus `free_rooms()` (F41
-    support: rooms open and unbooked for a given window).
+    support) and `check_waitlist_entry()` (F47 support - every rule except
+    BR1/BR7, in the same fixed order).
   - `service.py` - orchestrates storage + rules for every F1-F16 operation,
-    plus input validation (F25-F28), and the should-have additions
+    plus input validation (F25-F28), the should-have additions
     `suggest_room` (F41), `is_under_occupied` (F42), `move_booking` (F44 -
-    a thin wrapper around `amend_booking`, reusing every rule check).
+    a thin wrapper around `amend_booking`, reusing every rule check), and
+    the could-have `add_to_waitlist`/`remove_from_waitlist`/
+    `list_waitlist_for_room_date` (F47).
   - `reports.py` - F17-F24 reporting, verified against Appendix B exactly,
-    plus `day_timeline()` (F43).
+    plus `day_timeline()` (F43), `weekly_utilisation_summary()` (F45), and
+    `trend_comparison()` (F48).
+  - `export.py` - `write_day_csv()` (F46): a day's bookings as CSV.
   - `audit.py` - append-only audit log.
   - `config.py` / `clock.py` - configuration and the injectable clock.
   - `cli.py` - argparse entry point.

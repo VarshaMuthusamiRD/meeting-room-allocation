@@ -28,6 +28,34 @@ class TestAtomicSave(unittest.TestCase):
         leftovers = list(svc.data_dir.glob(".tmp-*"))
         self.assertEqual(leftovers, [])
 
+    def test_F29_transient_windows_file_lock_is_retried_not_fatal(self):
+        # Reproduces the real WinError 32 seen intermittently in development:
+        # os.replace can transiently fail if another process (antivirus,
+        # search indexing) briefly holds a read lock on the just-written
+        # temp file. This is not a genuine conflict on a single desk
+        # machine (TC1/TC6), so a short retry should resolve it silently.
+        svc = with_sample_rooms(make_service(now="2026-03-01 08:00"))
+        real_replace = storage.os.replace
+        calls = {"count": 0}
+
+        def flaky_replace(src, dst):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise PermissionError("simulated WinError 32")
+            return real_replace(src, dst)
+
+        with mock.patch("mrbooking.storage.os.replace", side_effect=flaky_replace):
+            svc.create_booking("Boardroom", "2026-03-02", "09:00", "10:00", 4, "mbaker")
+        self.assertGreaterEqual(calls["count"], 2)
+        reloaded = storage.load(svc.data_path)
+        self.assertEqual(len(reloaded.bookings), 1)
+
+    def test_F29_permanent_lock_still_raises_after_retries(self):
+        svc = with_sample_rooms(make_service(now="2026-03-01 08:00"))
+        with mock.patch("mrbooking.storage.os.replace", side_effect=PermissionError("stuck")):
+            with self.assertRaises(PermissionError):
+                storage.save(svc.data_path, svc.store)
+
 
 class TestCorruptionDetection(unittest.TestCase):
     def test_F30_invalid_json_reported_clearly(self):

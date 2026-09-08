@@ -55,6 +55,43 @@ class Booking:
 
 
 @dataclass
+class WaitlistEntry:
+    id: int
+    room: str
+    date: str          # YYYY-MM-DD
+    start: str          # HH:MM
+    end: str            # HH:MM
+    attendees: int
+    booked_by: str
+    status: str = "waiting"   # "waiting" or "removed"
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "room": self.room,
+            "date": self.date,
+            "start": self.start,
+            "end": self.end,
+            "attendees": self.attendees,
+            "booked_by": self.booked_by,
+            "status": self.status,
+        }
+
+    @staticmethod
+    def from_dict(d: dict) -> "WaitlistEntry":
+        return WaitlistEntry(
+            id=d["id"],
+            room=d["room"],
+            date=d["date"],
+            start=d["start"],
+            end=d["end"],
+            attendees=d["attendees"],
+            booked_by=d["booked_by"],
+            status=d.get("status", "waiting"),
+        )
+
+
+@dataclass
 class Closure:
     room: str
     date: str
