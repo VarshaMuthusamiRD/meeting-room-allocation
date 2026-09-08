@@ -149,11 +149,27 @@ demonstration rather than by a dedicated unit test.
 | AC39 | Pass | test_TC9_F35_opening_hours_come_from_config_not_code |
 | AC40 | Pass | test_TC7_F39_fixed_now_makes_BR6_reproducible |
 | AC41 | Pass | tests/test_performance.py (all TC10 tests) |
-| AC42 | Pending Day-20 operability pass | CLI `-h` usage message; verified manually once F34-F40 land |
+| AC42 | Pass | test_F38_usage_lists_every_operation |
+
+## Operability (F34-F40)
+
+| Req | Description | Tests |
+|---|---|---|
+| F34 | Startup self-check: data file present, readable, valid | tests/test_operability.py::test_F34_check_on_fresh_data_dir_succeeds, test_F34_check_on_corrupted_file_fails_clearly |
+| F35 | Opening hours/limits read from config, not hardcoded | tests/test_config_clock.py::test_TC9_F35_opening_hours_come_from_config_not_code |
+| F36 | Report software and data format version | tests/test_operability.py::test_F36_version_reports_software_and_format_version |
+| F37 | Success/failure exit code a script can act on | tests/test_operability.py::test_F37_success_exit_code_is_zero, test_F37_failure_exit_code_is_nonzero |
+| F38 | Usage message lists every operation and its arguments | tests/test_operability.py::test_F38_usage_lists_every_operation |
+| F39 | Current date/time accepted as an input (--now) | tests/test_config_clock.py::test_TC7_F39_fixed_now_makes_BR6_reproducible; tests/test_operability.py::test_F39_now_override_changes_reported_refusal |
+| F40 | Restore the data file from a chosen backup | tests/test_integrity.py::test_F40_restore_from_backup; tests/test_operability.py::test_F40_restore_backup_via_cli |
 
 ## Status
 
-F1-F33, BR1-BR16, TC7/TC9/TC10/TC12: **done, tested, green (93 tests).**
-AC1-AC41: **pass.** AC42 (usage message lists every operation) is
-mechanically true today via argparse but is formally re-checked in the
-Day-20 operability pass alongside F34-F40, which is next.
+**All 40 must-have requirements (F1-F40), all 16 business rules
+(BR1-BR16), all technical constraints TC7/TC9/TC10/TC12, and all 42
+acceptance criteria (AC1-AC42) are done, tested, and passing (101 tests,
+all green).** F41-F48 (should-have/could-have) were deliberately not
+attempted -- see LIMITATIONS.md for the reasoning. The live demonstration
+against the Appendix A sample data (rule-named refusals for BR1 and BR7,
+and every F17-F24 report figure) is recorded in BOARDROOM_FINDING.md and
+HANDOVER.md.

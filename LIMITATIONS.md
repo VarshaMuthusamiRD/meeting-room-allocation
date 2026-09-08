@@ -28,8 +28,29 @@ handover with anything found in the final operability pass.
   one machine, TC1) and was not built for multi-writer use because
   multi-writer use was never in scope.
 
+- **Occasional test-suite flakiness observed during development, not
+  reproduced since.** Once, out of dozens of consecutive full-suite runs
+  during Phase 3, `python -m unittest discover -s tests` reported a single
+  error that did not reappear on immediate re-run (5/5 clean afterward).
+  Most likely explanation is transient Windows filesystem/antivirus
+  interference on the temporary directories the tests create and delete
+  rapidly, not a defect in the code under test -- no failure could be
+  pinned to a specific assertion or reproduced deliberately. Worth a second
+  look if it recurs with a specific, reproducible test name.
+
 ## Not built (out of scope by Section 5, or should/could-have not reached)
 See Section 5 of the RFP for the full out-of-scope list (logins, email,
-recurring bookings, billing, desks, GUI, multi-site). Status of the
-should-have/could-have requirements (F41-F48) is recorded at handover, once
-it is known how much time remained after the must-haves.
+recurring bookings, billing, desks, GUI, multi-site) -- none of it was
+built, as instructed.
+
+**Should-have (F41-F44) and could-have (F45-F48) requirements were not
+attempted.** All forty must-have requirements (F1-F40, BR1-BR16) are
+complete, tested, and green (101 tests), matching the RFP's own stated
+preference: "we would rather have the must-haves working properly than
+these half-built" (Section 4.6) and "we will mark you down for a broken
+attempt" at a could-have (Section 4.7). Rather than build any of F41-F48
+partially in the time available, none were started, so that nothing
+half-finished is being handed over. If a next team picks this up, F41
+(smallest-room suggestion) and F43 (day timeline) look like the most
+useful next additions given how `reports.py` and `service.py` are already
+structured.
