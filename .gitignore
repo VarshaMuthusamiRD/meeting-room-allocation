@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+data/bookings.json
+data/audit.log
+data/backups/
+.pytest_cache/
